@@ -1,12 +1,13 @@
-{
+﻿{
     "input": {
+        "stdin": {
+        },
         "EtwEventSource": {
             "providers": [ "MyEventSource" ]
         }
     },
     "output": {
         "stdout": {
-            "asdf": [ 1, 3]
         }
     }
 }

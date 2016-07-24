@@ -23,12 +23,12 @@ namespace LogstashNetMain
     {
         static void Main(string[] args)
         {
-            var manager = new LogstashNet.LogstashNetManager(@"..\..\..\LogstashNet\simple.json");
+            var manager = new LogstashNet.LogstashNetManager(@".\ConfigFiles\simple.json");
 
             int count = 0;
             while (++count > 0)
             {
-                MyEventSource.log.TestWriteEvent(DateTime.Now.ToString(), count);
+                //MyEventSource.log.TestWriteEvent(DateTime.Now.ToString(), count);
                 System.Threading.Thread.Sleep(100);
             }
 

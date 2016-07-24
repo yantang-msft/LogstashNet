@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using LogstashNet.Filters;
 using LogstashNet.Inputs;
 using LogstashNet.Outputs;
 using Newtonsoft.Json;
@@ -16,6 +17,7 @@ namespace LogstashNet
     {
         private ConcurrentQueue<JObject> _messageQueue = new ConcurrentQueue<JObject>();
         private List<InputBase> _inputPlugins = new List<InputBase>();
+        private List<FilterBase> _filterPlugins = new List<FilterBase>();
         private List<OutputBase> _outputPlugins = new List<OutputBase>();
         private int _batchSize;
         private int _batchDelay;
@@ -30,9 +32,31 @@ namespace LogstashNet
             // Initialize input plugins
             if (config.Input != null)
             {
-                if (config.Input.EtwEventSource != null)
+                var stdinConfig = config.Input.Stdin;
+                if (stdinConfig != null)
                 {
-                    _inputPlugins.Add(new EtwEventSourceInput(config.Input.EtwEventSource.providers, _messageQueue));
+                    _inputPlugins.Add(new StdInput(_messageQueue, stdinConfig.codec, stdinConfig.type));
+                }
+
+                var etwEventSourceConfig = config.Input.EtwEventSource;
+                if (etwEventSourceConfig != null)
+                {
+                    _inputPlugins.Add(new EtwEventSourceInput(_messageQueue,
+                        etwEventSourceConfig.providers, etwEventSourceConfig.codec, etwEventSourceConfig.type));
+                }
+            }
+
+            if (config.Filter != null)
+            {
+                var grokConfig = config.Filter.Grok;
+                if (grokConfig != null)
+                {
+                    if (grokConfig.Match.Count != 2)
+                    {
+                        throw new Exception("Grok filter's match property must be an array with 2 elements. The first element is the path of the property to match, the second element is the grok pattern.");
+                    }
+
+                    _filterPlugins.Add(new GrokFilter(grokConfig.Match, grokConfig.Condition));
                 }
             }
 
@@ -48,6 +72,7 @@ namespace LogstashNet
             // TODO: Plugin extensibility
 
             // Start log forwarding
+            // TODO: This output sequence is not ordered even for the same input source.
             for (int i = 0; i < workerThreadNum; i++)
             {
                 Task.Run(() => ForwardLogs());
@@ -61,17 +86,17 @@ namespace LogstashNet
             // TODO: Is a shutdown function needed? If so, pass in an CancellationToken to terminate
             while (true)
             {
-                var messageList = new List<JObject>();
+                var eventList = new List<JObject>();
                 var endTime = DateTime.Now.AddMilliseconds(_batchDelay);
 
                 JObject message = null;
-                while (messageList.Count < _batchSize && _messageQueue.TryDequeue(out message))
+                while (eventList.Count < _batchSize && _messageQueue.TryDequeue(out message))
                 {
-                    messageList.Add(message);
+                    eventList.Add(message);
                 }
 
                 // Didn't fetch enough items, which means the input load is not high.
-                if (messageList.Count < _batchSize)
+                if (eventList.Count < _batchSize)
                 {
                     var currentTime = DateTime.Now;
                     if (endTime > currentTime)
@@ -80,9 +105,17 @@ namespace LogstashNet
                     }
                 }
 
+                foreach (var evt in eventList)
+                {
+                    foreach (var filter in _filterPlugins)
+                    {
+                        filter.Apply(evt);
+                    }
+                }
+
                 foreach (var output in _outputPlugins)
                 {
-                    await output.TransferLogsAsync(messageList);
+                    await output.TransferLogsAsync(eventList);
                 }
             }
         }

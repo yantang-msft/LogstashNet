@@ -46,17 +46,27 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Codecs\ICodec.cs" />
+    <Compile Include="Codecs\JsonCodec.cs" />
+    <Compile Include="Codecs\PlainCodec.cs" />
     <Compile Include="ConfigDataContract.cs" />
+    <Compile Include="Filters\FilterBase.cs" />
+    <Compile Include="Filters\GrokFilter.cs" />
+    <None Include="Filters\GrokPatterns.pattern">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <Compile Include="Inputs\EtwEventSourceInput.cs" />
     <Compile Include="Inputs\InputBase.cs" />
+    <Compile Include="Inputs\StdInput.cs" />
+    <Compile Include="JsonExtensions.cs" />
     <Compile Include="LogstashNetManager.cs" />
     <Compile Include="Outputs\OutputBase.cs" />
     <Compile Include="Outputs\StdOutput.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utilities.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="simple.json" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

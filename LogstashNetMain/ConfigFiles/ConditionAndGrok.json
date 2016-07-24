@@ -1,0 +1,21 @@
+{
+    "input": {
+        "stdin": {
+            "type": "stdin"
+        },
+        "EtwEventSource": {
+            "providers": [ "MyEventSource" ],
+            "codec": "json"
+        }
+    },
+    "filter": {
+        "grok": {
+            "condition": "[type] == \"stdin\"",
+            "match": [ "[message]", "%{NUMBER:num} \\S+ %{WORD:word2nd}"]
+        }
+    },
+    "output": {
+        "stdout": {
+        }
+    }
+}

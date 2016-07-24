@@ -82,12 +82,11 @@ namespace LogstashNet.Inputs
         }
 
         private EtwEventSourceListener _listener;
-        private ConcurrentQueue<JObject> _messageQueue;
 
-        public EtwEventSourceInput(List<string> providers, ConcurrentQueue<JObject> messageQueue)
+        public EtwEventSourceInput(ConcurrentQueue<JObject> messageQueue, List<string> providers, string codecString, string type)
+            : base(messageQueue, codecString, type)
         {
             _listener = new EtwEventSourceListener(providers, OnEventWritten);
-            _messageQueue = messageQueue;
         }
 
         private void OnEventWritten(EventWrittenEventArgs eventData)
@@ -95,11 +94,11 @@ namespace LogstashNet.Inputs
             try
             {
                 var serializedEvent = JsonConvert.SerializeObject(eventData);
-                _messageQueue.Enqueue(JsonConvert.DeserializeObject<JObject>(serializedEvent));
+                PushEvent(serializedEvent);
             }
-            catch
+            catch (Exception e)
             {
-                // TODO: exception handling
+                Utilities.WriteError(e.ToString());
             }
         }
     }

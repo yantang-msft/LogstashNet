@@ -20,6 +20,10 @@ namespace LogstashNet
     {
         [DataMember]
         public Input Input { get; set; }
+
+        [DataMember]
+        public Filter Filter { get; set; }
+
         [DataMember]
         public Output Output { get; set; }
     }
@@ -28,14 +32,49 @@ namespace LogstashNet
     internal class Input : ExtendableObject
     {
         [DataMember]
+        public Stdin Stdin { get; set; }
+
+        [DataMember]
         public EtwEventSource EtwEventSource { get; set; }
     }
 
     [DataContract()]
-    internal class EtwEventSource : ExtendableObject
+    internal class InputContractBase : ExtendableObject
+    {
+        [DataMember]
+        public string codec { get; set; }
+
+        [DataMember]
+        public string type { get; set; }
+    }
+
+    [DataContract()]
+    internal class Stdin : InputContractBase
+    {
+
+    }
+
+    [DataContract()]
+    internal class EtwEventSource : InputContractBase
     {
         [DataMember]
         public List<string> providers { get; set; }
+    }
+
+    [DataContract()]
+    internal class Filter
+    {
+        [DataMember]
+        public Grok Grok { get; set; }
+    }
+
+    [DataContract()]
+    internal class Grok
+    {
+        [DataMember]
+        public string Condition { get; set; }
+        [DataMember]
+        public List<string> Match { get; set; }
     }
 
     [DataContract()]
