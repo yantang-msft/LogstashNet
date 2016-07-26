@@ -1,0 +1,25 @@
+﻿{
+    "input": {
+        "EtwEventSource": {
+            "providers": [ "MyEventSource", "MetricSource" ],
+            "codec": "json"
+        }
+    },
+    "output": {
+        "applicationInsights": {
+            "ikey": "e2c10e38-41fe-4246-bca9-06f88227e224",
+            "trace": {
+                "condition": "[EventSource][Name] == \"MyEventSource\"",
+                "message":  "[Payload][0]"
+            },
+            "metric": {
+                "condition": "[EventSource][Name] == \"MetricSource\"",
+                "name": "TestETWAsMetric",
+                "value": "[Payload][0]"
+            }
+        },
+        "stdout": {
+            "condition": "[EventSource][Name] == \"MetricSource\""
+        }
+    }
+}

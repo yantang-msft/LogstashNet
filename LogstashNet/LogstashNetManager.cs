@@ -27,9 +27,26 @@ namespace LogstashNet
             _batchSize = batchSize;
             _batchDelay = batchDelay;
 
+            // Initialize plugins
             var config = JsonConvert.DeserializeObject<Config>(File.ReadAllText(configFilePath));
+            InitializeInputPlugins(config);
+            InitializeFilterPlugins(config);
+            InitializedOutputPlugins(config);
 
-            // Initialize input plugins
+            // TODO: Plugin extensibility
+
+            // Start log forwarding
+            // TODO: This output sequence is not ordered even for the same input source.
+            for (int i = 0; i < workerThreadNum; i++)
+            {
+                Task.Run(() => ForwardLogs());
+            }
+
+            // TODO: handle corrupt and restart scenario
+        }
+
+        private void InitializeInputPlugins(Config config)
+        {
             if (config.Input != null)
             {
                 var stdinConfig = config.Input.Stdin;
@@ -45,7 +62,10 @@ namespace LogstashNet
                         etwEventSourceConfig.providers, etwEventSourceConfig.codec, etwEventSourceConfig.type));
                 }
             }
+        }
 
+        private void InitializeFilterPlugins(Config config)
+        {
             if (config.Filter != null)
             {
                 var grokConfig = config.Filter.Grok;
@@ -59,26 +79,34 @@ namespace LogstashNet
                     _filterPlugins.Add(new GrokFilter(grokConfig.Match, grokConfig.Condition));
                 }
             }
+        }
 
-            // Initialize output plugins
+        private void InitializedOutputPlugins(Config config)
+        {
             if (config.Output != null)
             {
                 if (config.Output.StdOut != null)
                 {
-                    _outputPlugins.Add(new StdOutput());
+                    _outputPlugins.Add(new StdOutput(config.Output.StdOut.Condition));
+                }
+
+                if (config.Output.ApplicationInsights != null)
+                {
+                    var appInsightsConfig = config.Output.ApplicationInsights;
+                    var traceConfig = appInsightsConfig.Trace == null ? null : new ApplicationInsightsOutput.AITraceConfig()
+                    {
+                        Condition = appInsightsConfig.Trace.Condition
+                    };
+                    var metricConfig = appInsightsConfig.Metric == null ? null : new ApplicationInsightsOutput.AIMetricConfig()
+                    {
+                        Condition = appInsightsConfig.Metric.Condition,
+                        Name = appInsightsConfig.Metric.Name,
+                        Value = appInsightsConfig.Metric.Value
+                    };
+
+                    _outputPlugins.Add(new ApplicationInsightsOutput(appInsightsConfig.InstrumentationKey, traceConfig, metricConfig));
                 }
             }
-
-            // TODO: Plugin extensibility
-
-            // Start log forwarding
-            // TODO: This output sequence is not ordered even for the same input source.
-            for (int i = 0; i < workerThreadNum; i++)
-            {
-                Task.Run(() => ForwardLogs());
-            }
-
-            // TODO: handle corrupt and restart scenario
         }
 
         private async void ForwardLogs()
@@ -115,7 +143,10 @@ namespace LogstashNet
 
                 foreach (var output in _outputPlugins)
                 {
-                    await output.TransferLogsAsync(eventList);
+                    if (eventList.Count > 0)
+                    {
+                        await output.TransferLogsAsync(eventList);
+                    }
                 }
             }
         }

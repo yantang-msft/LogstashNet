@@ -13,24 +13,39 @@ namespace LogstashNetMain
         public static MyEventSource log = new MyEventSource();
 
         [Event(1)]
-        public void TestWriteEvent(string timeStamp, int num1)
+        public void TestWriteEvent(string message, int num1)
         {
-            base.WriteEvent(1, timeStamp, num1);
+            base.WriteEvent(1, message, num1);
         }
     }
 
-        class Program
+    [EventSource(Name = "MetricSource")]
+    public sealed class MetricSource : EventSource
+    {
+        public static MetricSource log = new MetricSource();
+
+        [Event(1)]
+        public void WriteMetric(double value)
+        {
+            base.WriteEvent(1, value);
+        }
+    }
+
+    class Program
     {
         static void Main(string[] args)
         {
-            var manager = new LogstashNet.LogstashNetManager(@".\ConfigFiles\simple.json");
+            var manager = new LogstashNet.LogstashNetManager(@".\ConfigFiles\ETWAsMetrics.json");
 
-            int count = 0;
-            while (++count > 0)
-            {
-                //MyEventSource.log.TestWriteEvent(DateTime.Now.ToString(), count);
-                System.Threading.Thread.Sleep(100);
-            }
+            //int count = 0;
+            //while (++count > 0)
+            //{
+            //    MyEventSource.log.TestWriteEvent(DateTime.Now.ToString(), count);
+            //    System.Threading.Thread.Sleep(100);
+            //}
+
+            MyEventSource.log.TestWriteEvent("This is the message at " + DateTime.Now.ToString(), new Random().Next());
+            MetricSource.log.WriteMetric(new Random().NextDouble());
 
             Console.ReadLine();
         }

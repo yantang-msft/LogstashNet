@@ -51,6 +51,9 @@
     <None Include="ConfigFiles\ConditionAndGrok.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="ConfigFiles\ETWAsMetrics.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="ConfigFiles\simple.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

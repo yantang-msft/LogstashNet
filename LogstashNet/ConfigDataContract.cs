@@ -82,11 +82,51 @@ namespace LogstashNet
     {
         [DataMember]
         public StdOut StdOut { get; set; }
+
+        [DataMember]
+        public ApplicationInsights ApplicationInsights { get; set; }
     }
 
-    [DataContract(Name = "stdout")]
+    [DataContract]
     internal class StdOut: ExtendableObject
     {
+        [DataMember]
+        public string Condition { get; set; }
+    }
 
+    [DataContract]
+    internal class ApplicationInsights : ExtendableObject
+    {
+        [DataMember]
+        public string Condition { get; set; }
+
+        [DataMember(Name = "ikey")]
+        public string InstrumentationKey { get; set; }
+
+        [DataMember(Name = "trace")]
+        public ApplicationInsightsTrace Trace { get; set; }
+
+        [DataMember(Name = "metric")]
+        public ApplicationInsightsMetric Metric { get; set; }
+    }
+
+    [DataContract]
+    internal class ApplicationInsightsTrace : ExtendableObject
+    {
+        [DataMember]
+        public string Condition { get; set; }
+    }
+
+    [DataContract]
+    internal class ApplicationInsightsMetric : ExtendableObject
+    {
+        [DataMember]
+        public string Condition { get; set; }
+
+        [DataMember]
+        public string Name { get; set; }
+
+        [DataMember]
+        public string Value { get; set; }
     }
 }
