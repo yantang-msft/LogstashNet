@@ -35,17 +35,17 @@ namespace LogstashNetMain
     {
         static void Main(string[] args)
         {
-            var manager = new LogstashNet.LogstashNetManager(@".\ConfigFiles\ETWAsMetrics.json");
-
-            //int count = 0;
-            //while (++count > 0)
-            //{
-            //    MyEventSource.log.TestWriteEvent(DateTime.Now.ToString(), count);
-            //    System.Threading.Thread.Sleep(100);
-            //}
+            var manager = new LogstashNet.LogstashNetManager(@".\ConfigFiles\ConditionAndGrok.json");
 
             MyEventSource.log.TestWriteEvent("This is the message at " + DateTime.Now.ToString(), new Random().Next());
             MetricSource.log.WriteMetric(new Random().NextDouble());
+
+            int count = 0;
+            while (++count > 0)
+            {
+                //MyEventSource.log.TestWriteEvent(DateTime.Now.ToString(), count);
+                System.Threading.Thread.Sleep(100);
+            }
 
             Console.ReadLine();
         }

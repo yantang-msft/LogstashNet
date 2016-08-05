@@ -54,6 +54,7 @@
     <None Include="ConfigFiles\ETWAsMetrics.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="ConfigFiles\InProc.json" />
     <None Include="ConfigFiles\simple.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -1,0 +1,36 @@
+﻿{
+    "input": {
+        "EtwEventSource": [
+            {
+                "providers": [ "TraceSource" ]
+                // type default to Trace
+            },
+            {
+                "providers": [ "MetricSource1", "MetricSource2" ],
+                "type": "Metric"
+            }
+        ]
+    },
+    "output": {
+        "AppInsights": [
+            {
+                "ikey": "...",
+                "trace": {
+                    "condition": "[type] != \"Metric\"",
+                    "message": "[Payload][0]"
+                },
+                "metric": {
+                    "condition": "[type] == \"Metric\"",
+                    "name": "[Payload][0]",
+                    "value": "[Payload][1]"
+                }
+            }
+        ],
+        "EventHub": [
+            {
+                "condition": "[PayloadName][0] == \"storage\" && [Payload][0].Contains(\"eh\")",
+                "connectionstring": "..."
+            }
+        ]
+    }
+}

@@ -51,11 +51,12 @@ namespace LogstashNet.Outputs
             {
                 if (string.IsNullOrEmpty(_traceConfig.Condition) || Utilities.EvaluateCondition(message, _traceConfig.Condition))
                 {
+                    var traceMessage = message["Message"].ToString();
                     var traceTelemetry = new TraceTelemetry()
                     {
                         SeverityLevel = EventLevelToTraceLevel(message["Level"].ToString()),
                         Timestamp = DateTimeOffset.Now,
-                        Message = message["Message"].ToString()
+                        Message = string.IsNullOrEmpty(traceMessage) ? "Dummy message. It's a required field of AI." : traceMessage
                     };
 
                     var payloadNames = message["PayloadNames"] as JArray;
