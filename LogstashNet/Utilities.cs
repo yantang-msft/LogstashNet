@@ -20,89 +20,134 @@ namespace LogstashNet
             Console.ResetColor();
         }
 
-        public static bool EvaluateCondition(JObject json, string condition)
+        public static object CompileCondition(string condition)
         {
-            try
+            // This is the preprocess step to replace the json oject field reference to function calls.
+            // Although this step can also be done in CompileConditionCore(), we put it here so it's more debuggable.
+            string cond = condition;
+            string regex = @"(\[\w+\])+"; // match the event properties reference. i.e., [field][subfield]
+            var matchedPropertyPaths = new HashSet<string>();
+
+            var match = Regex.Match(condition, regex);
+            while (match.Success)
             {
-                var cond = condition;
-
-                string regex = @"(\[\w+\])+"; // match the event properties reference. i.e., [field][subfield]
-                var matchedPropertyPaths = new HashSet<string>();
-
-                var match = Regex.Match(condition, regex);
-                while (match.Success)
-                {
-                    matchedPropertyPaths.Add(match.Value);
-                    match = match.NextMatch();
-                }
-
-                foreach (var propertyPath in matchedPropertyPaths)
-                {
-                    string value = null;
-                    if (json.TryExpandPropertyByPath(propertyPath, out value))
-                    {
-                        cond = cond.Replace(propertyPath, value);
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-
-                var result = Eval(cond);
-
-                return result is bool ? (bool)result : false;
+                matchedPropertyPaths.Add(match.Value);
+                match = match.NextMatch();
             }
-            catch
+
+            foreach (var propertyPath in matchedPropertyPaths)
             {
-                return false;
+                cond = condition.Replace(propertyPath, $"ExpandPropertyByPath(evt, \"{propertyPath}\")");
             }
+
+            var result = CompileConditionCore(cond);
+            if (result == null)
+            {
+                throw new Exception("Failed to compile condition: " + condition);
+            }
+
+            return result;
         }
 
-        private static object Eval(string sCSCode)
+        private static object CompileConditionCore(string condition)
         {
             CSharpCodeProvider c = new CSharpCodeProvider();
             CompilerParameters cp = new CompilerParameters();
 
             cp.ReferencedAssemblies.Add("system.dll");
-            cp.ReferencedAssemblies.Add("system.xml.dll");
-            cp.ReferencedAssemblies.Add("system.data.dll");
-            cp.ReferencedAssemblies.Add("system.windows.forms.dll");
-            cp.ReferencedAssemblies.Add("system.drawing.dll");
+            cp.ReferencedAssemblies.Add("system.core.dll");
+            cp.ReferencedAssemblies.Add("Microsoft.CSharp.dll");
+            cp.ReferencedAssemblies.Add("Newtonsoft.Json.dll");
 
             cp.CompilerOptions = "/t:library";
             cp.GenerateInMemory = true;
 
-            StringBuilder sb = new StringBuilder("");
-            sb.Append("using System;\n");
-            sb.Append("using System.Xml;\n");
-            sb.Append("using System.Data;\n");
-            sb.Append("using System.Data.SqlClient;\n");
-            sb.Append("using System.Windows.Forms;\n");
-            sb.Append("using System.Drawing;\n");
+            var code = @"
+using System;
+using System.Text.RegularExpressions;
+using Newtonsoft.Json.Linq;
 
-            sb.Append("namespace CSCodeEvaler{ \n");
-            sb.Append("public class CSCodeEvaler{ \n");
-            sb.Append("public object EvalCode(){\n");
-            sb.Append("return " + sCSCode + "; \n");
-            sb.Append("} \n");
-            sb.Append("} \n");
-            sb.Append("}\n");
-            
-            CompilerResults cr = c.CompileAssemblyFromSource(cp, sb.ToString());
+namespace ConditionEvaluator
+{
+    public class Evaluator
+    {
+        private static dynamic ExpandPropertyByPath(JObject json, string propertyPath)
+        {
+            try
+            {
+                string regex = @""\[\w+\]""; // match each
+                var match = Regex.Match(propertyPath, regex);
+                JToken currentToken = json;
+
+                while (match.Success && currentToken != null)
+                {
+                    var propertyName = match.Value.Trim(new char[] { '[', ']' });
+
+                    // If trying to get the value from an array
+                    int index = 0;
+                    if (currentToken is JArray && int.TryParse(propertyName, out index))
+                    {
+                        currentToken = (currentToken as JArray)[index];
+                    }
+                    else
+                    {
+                        currentToken = (currentToken as JObject).GetValue(propertyName);
+                    }
+                    match = match.NextMatch();
+                }
+
+                var jvalue = currentToken as JValue;
+                if (jvalue != null)
+                {
+                    if (jvalue.Type == JTokenType.Boolean
+                        || jvalue.Type == JTokenType.Integer
+                        || jvalue.Type == JTokenType.Float)
+                    {
+                        return jvalue.Value;
+                    }
+                    else
+                    {
+                        return jvalue.Value.ToString();
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        public bool Evaluate(JObject evt)
+        {
+            return <condition>;
+        }
+    }
+}";
+
+            CompilerResults cr = c.CompileAssemblyFromSource(cp, code.Replace("<condition>", condition));
             if (cr.Errors.Count > 0)
             {
-                return false;
+                return null;
             }
 
             System.Reflection.Assembly a = cr.CompiledAssembly;
-            object o = a.CreateInstance("CSCodeEvaler.CSCodeEvaler");
+            return a.CreateInstance("ConditionEvaluator.Evaluator");
+        }
 
-            Type t = o.GetType();
-            MethodInfo mi = t.GetMethod("EvalCode");
+        public static bool EvaluateCondition(object evaluator, JObject json)
+        {
+            try
+            {
+                var type = evaluator.GetType();
+                var method = type.GetMethod("Evaluate");
+                return (bool)method.Invoke(evaluator, new[] { json });
+            }
+            catch
+            {
+            }
 
-            object s = mi.Invoke(o, null);
-            return s;
+            return false;
         }
     }
 }

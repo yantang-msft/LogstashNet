@@ -13,14 +13,49 @@ namespace LogstashNet.Outputs
     {
         public class AITraceConfig
         {
+            private object _evaluator;
+
             public string Condition { get; set; }
+            public object Evaluator
+            {
+                get
+                {
+                    if (_evaluator != null)
+                    {
+                        return _evaluator;
+                    }
+
+                    if (!string.IsNullOrEmpty(Condition))
+                    {
+                        _evaluator = Utilities.CompileCondition(Condition);
+                    }
+                    return _evaluator;
+                }
+            }
         }
 
         public class AIMetricConfig
         {
+            private object _evaluator;
             public string Condition { get; set; }
             public string Name { get; set; }
             public string Value { get; set; }
+            public object Evaluator
+            {
+                get
+                {
+                    if (_evaluator != null)
+                    {
+                        return _evaluator;
+                    }
+
+                    if (!string.IsNullOrEmpty(Condition))
+                    {
+                        _evaluator = Utilities.CompileCondition(Condition);
+                    }
+                    return _evaluator;
+                }
+            }
         }
 
         private readonly TelemetryClient _aiClient;
@@ -49,7 +84,7 @@ namespace LogstashNet.Outputs
         {
             if (_traceConfig != null)
             {
-                if (string.IsNullOrEmpty(_traceConfig.Condition) || Utilities.EvaluateCondition(message, _traceConfig.Condition))
+                if (string.IsNullOrEmpty(_traceConfig.Condition) || Utilities.EvaluateCondition(_traceConfig.Evaluator, message))
                 {
                     var traceMessage = message["Message"].ToString();
                     var traceTelemetry = new TraceTelemetry()
@@ -79,7 +114,7 @@ namespace LogstashNet.Outputs
         {
             if (_metricConfig != null)
             {
-                if (string.IsNullOrEmpty(_metricConfig.Condition) || Utilities.EvaluateCondition(message, _metricConfig.Condition))
+                if (string.IsNullOrEmpty(_metricConfig.Condition) || Utilities.EvaluateCondition(_metricConfig.Evaluator, message))
                 {
                     string metricValue = null;
                     if (!message.TryExpandPropertyByPath(_metricConfig.Value, out metricValue))

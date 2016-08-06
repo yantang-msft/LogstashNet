@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -98,13 +99,16 @@ namespace LogstashNet.Filters
         }
         #endregion
 
-        private string _condition;
+        private object _evaluator;
         private string _propertyPath;
         private string _pattern;
 
         public GrokFilter(List<string> match, string condition)
         {
-            _condition = condition;
+            if (!string.IsNullOrEmpty(condition))
+            {
+                _evaluator = Utilities.CompileCondition(condition);
+            }
             _propertyPath = match.ElementAt(0);
             _pattern = ExpandPatternWithRegex(match.ElementAt(1));
         }
@@ -112,9 +116,9 @@ namespace LogstashNet.Filters
         public override void Apply(JObject evt)
         {
             // Filter by condition
-            if (!string.IsNullOrEmpty(_condition))
+            if (_evaluator != null)
             {
-                if (!Utilities.EvaluateCondition(evt, _condition))
+                if (!Utilities.EvaluateCondition(_evaluator, evt))
                 {
                     return;
                 }

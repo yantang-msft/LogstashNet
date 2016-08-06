@@ -10,18 +10,21 @@ namespace LogstashNet.Outputs
 {
     internal class StdOutput : OutputBase
     {
-        private string _condition;
+        private object _evaluator;
 
         public StdOutput(string condition = null)
         {
-            _condition = condition;
+            if (!string.IsNullOrEmpty(condition))
+            {
+                _evaluator = Utilities.CompileCondition(condition);
+            }
         }
 
         public override async Task TransferLogsAsync(List<JObject> messages)
         {
             foreach (var message in messages)
             {
-                if (!string.IsNullOrEmpty(_condition) && !Utilities.EvaluateCondition(message, _condition))
+                if (_evaluator != null && !Utilities.EvaluateCondition(_evaluator, message))
                 {
                     continue;
                 }
